@@ -47,3 +47,6 @@ next-env.d.ts
 /.tools/
 /artifacts/
 *.tsbuildinfo
+# Copied from the pinned MediaPipe package by Vite; the model and worker are tracked.
+/public/vision/runtime.js
+/public/vision/wasm/
