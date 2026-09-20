@@ -2,7 +2,52 @@
 
 可运行的蓝色科技风石头剪刀布游戏，使用 **React 19、TypeScript、Vite 8、Tailwind CSS 4**。无需后端、API 密钥或在线 AI 服务。
 
-## 安装与启动
+## 一键快速启动（推荐）
+
+### Windows：双击启动
+
+1. 首次使用先安装 [Node.js 24 LTS](https://nodejs.org/)（最低版本 22.13，安装时保留 npm）。
+2. 完整下载并解压本项目，或克隆仓库。
+3. 双击项目根目录的 **`start.bat`**。
+
+脚本会自动定位项目目录、检查 Node.js、按需安装依赖，然后启动游戏并打开默认浏览器。无需手动输入安装命令或提前构建。
+
+- 游戏地址固定为 **http://127.0.0.1:5173**。
+- 缺少依赖、已安装的直接依赖与锁文件不匹配，或上次一键启动后依赖配置发生变化时，自动执行 `npm ci --include=dev --include=optional`；依赖就绪时跳过安装。
+- 首次安装需要联网；依赖就绪后，游戏可在本地离线运行。
+- 游戏运行期间请保留终端窗口；按 **Ctrl+C** 停止服务。
+- 浏览器未自动打开时，可手动访问上面的地址。
+- 启动失败时会显示错误，Windows 窗口会等待按键，方便查看原因。
+
+### 命令行快速启动（Windows / macOS / Linux）
+
+在项目根目录执行，依赖缺失时也会自动安装：
+
+```bash
+node scripts/start.mjs
+```
+
+已安装 npm 时，也可使用：
+
+```bash
+npm run quickstart
+```
+
+仅启动服务、不自动打开浏览器：
+
+```bash
+npm run quickstart -- --no-open
+```
+
+### 常见问题
+
+- **找不到 Node.js / 版本过低**：安装 Node.js 24 LTS 后，重新双击 `start.bat`。
+- **找不到 npm**：重新运行 Node.js 安装程序，确保安装 npm。脚本兼容本开发环境的临时 npm，但普通使用者不需要 `.tools` 目录。
+- **依赖安装失败**：检查网络与错误输出后重新启动；也可在项目目录手动执行 `npm ci`。脚本不会自动切换 npm 镜像源。
+- **5173 端口已占用**：如果已有游戏窗口，直接打开游戏地址即可；否则停止占用该端口的程序后再启动。脚本不会结束其他进程或自动切换端口，避免本地战绩因网站来源变化而看似丢失。
+- **不要直接双击 `index.html`**：请通过启动脚本或下面的开发命令访问游戏。
+
+## 手动安装与开发
 
 建议 Node.js 24 LTS（最低 22.13）和 npm。在项目目录执行：
 
@@ -26,11 +71,13 @@ npm start
 npm test
 ```
 
-本开发环境仅内置 Node.js，已在 `.tools/package/` 临时安装 npm；因此也可执行 `node .tools/package/bin/npm-cli.js run dev`。其他电脑按标准方式安装 Node.js/npm 即可，不需要该临时目录。
+`npm start` 用于预览已经构建好的 `dist/`；日常游玩推荐一键启动，开发时可用 `npm run dev`。
 
 ## 主要文件结构
 
 ```text
+start.bat               Windows 双击启动入口
+scripts/start.mjs       跨平台环境检查、依赖安装与自动打开游戏
 index.html              中文页面入口与元信息
 src/
   main.tsx              React 挂载入口

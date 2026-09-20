@@ -6,6 +6,7 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "quickstart": "node scripts/start.mjs",
     "dev": "node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5173",
     "build": "node node_modules/typescript/bin/tsc --noEmit && node node_modules/vite/bin/vite.js build",
     "start": "node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 5173",
