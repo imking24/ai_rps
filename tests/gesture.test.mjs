@@ -2,12 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { detectedMove, GestureStabilizer, canUseSample } from '../src/vision/gesture.ts';
 
-const detection = (category = 'Closed_Fist', score = .95, handCount = 1) => ({ category, score, handCount });
+const detection = (category = 'Closed_Fist', score = .6, handCount = 1) => ({ category, score, handCount });
 test('only confident fist, victory and open palm with exactly one hand are accepted', () => {
   assert.equal(detectedMove(detection()), 'rock');
   assert.equal(detectedMove(detection('Victory')), 'scissors');
   assert.equal(detectedMove(detection('Open_Palm')), 'paper');
-  for (const value of [detection('Thumb_Up'), detection('None'), detection('Closed_Fist', .74), detection('Open_Palm', .9, 2), detection('Victory', .9, 0), detection('constructor'), detection('Victory', NaN)]) assert.equal(detectedMove(value), null);
+  assert.equal(detectedMove(detection('Closed_Fist', .74)), 'rock');
+  for (const value of [detection('Thumb_Up'), detection('None'), detection('Closed_Fist', .5999), detection('Victory', .5999), detection('Open_Palm', .5999), detection('Open_Palm', .9, 2), detection('Victory', .9, 0), detection('constructor'), detection('Victory', NaN)]) assert.equal(detectedMove(value), null);
 });
 test('a gesture becomes stable at exactly five continuous seconds, never before', () => {
   const filter = new GestureStabilizer();
@@ -25,7 +26,7 @@ for (const [name, interrupt] of [
   ['lost hand', filter => filter.update(detection('Closed_Fist',.95,0),5050)],
   ['multiple hands', filter => filter.update(detection('Closed_Fist',.95,2),5050)],
   ['uncertain gesture', filter => filter.update(detection('None'),5050)],
-  ['low confidence', filter => filter.update(detection('Closed_Fist',.4),5050)],
+  ['confidence below 60%', filter => filter.update(detection('Closed_Fist',.5999),5050)],
   ['next round or pause', filter => filter.reset()],
 ]) {
   test(`${name} at 4.9 seconds requires a new full five-second hold`, () => {

@@ -2,7 +2,7 @@ import type { Move } from '../engine';
 
 export type Detection = { handCount: number; category: string; score: number };
 export type GestureSample = { move: Move; confidence: number; stable: boolean; progress: number; observedAt: number };
-export const MIN_CONFIDENCE = 0.75;
+export const MIN_CONFIDENCE = 0.6;
 export const STABLE_DURATION_MS = 5000;
 export const MAX_FRAME_GAP_MS = 450;
 export const MAX_SAMPLE_AGE_MS = 700;

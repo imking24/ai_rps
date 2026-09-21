@@ -121,7 +121,7 @@ vite.config.ts          开发和生产构建配置
 
 点击 **关闭摄像头** 会停止设备和识别线程。离开页面、切换到后台、返回主菜单或比赛结束时自动关闭；刷新后需要重新手动开启。摄像头只请求视频权限，不使用麦克风，画面不录制、不上传、不写入历史记录。
 
-识别使用 [MediaPipe Gesture Recognizer](https://developers.google.com/edge/mediapipe/solutions/vision/gesture_recognizer/web_js)。模型和运行资源从本项目提供；安装依赖后可离线运行，无需 API 密钥。识别在独立 Web Worker 中执行，避免阻塞游戏动画。默认接受置信度至少 75% 的结果，并做连续帧稳定性检查。
+识别使用 [MediaPipe Gesture Recognizer](https://developers.google.com/edge/mediapipe/solutions/vision/gesture_recognizer/web_js)。模型和运行资源从本项目提供；安装依赖后可离线运行，无需 API 密钥。识别在独立 Web Worker 中执行，避免阻塞游戏动画。接受置信度至少 60% 的结果（包含恰好 60%），并做连续帧稳定性检查；低于 60% 时清除稳定计时。
 
 **浏览器要求与故障处理：**
 
