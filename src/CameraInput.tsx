@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, CameraOff, Check, LoaderCircle, ScanLine, ShieldCheck } from 'lucide-react';
 import { LABELS, type Move } from './engine';
 import Hand from './Hand';
-import { canUseSample, GestureStabilizer, MAX_SAMPLE_AGE_MS, type Detection, type GestureSample } from './vision/gesture';
+import { canUseSample, GestureStabilizer, MAX_SAMPLE_AGE_MS, STABLE_DURATION_MS, type Detection, type GestureSample } from './vision/gesture';
 
 type Props = { canSubmit: boolean; roundKey: string; phase: string; paused: boolean; onSubmit: (move: Move) => void };
 type Point = { x: number; y: number };
@@ -35,9 +35,13 @@ export default function CameraInput(props: Props) {
   const watchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stabilizer = useRef(new GestureStabilizer());
   const sampleRef = useRef<GestureSample | null>(null);
+  const resetAt = useRef(0);
+  const submittedRound = useRef<string | null>(null);
   const previousPhase = useRef(props.phase);
 
   const reset = useCallback(() => {
+    // Ignore frames captured before a round change, pause or reset, even if delivered later.
+    resetAt.current = performance.now();
     stabilizer.current.reset();
     sampleRef.current = null;
     setSample(null);
@@ -168,7 +172,7 @@ export default function CameraInput(props: Props) {
           fail(data.stage === 'model' ? '识别模型加载失败。请确认模型文件完整，并使用新版浏览器重试。' : '手势识别暂时中断，请关闭摄像头后重新开启。');
         } else {
           busy = false;
-          if (data.roundKey !== latest.current.roundKey || latest.current.paused) return;
+          if (data.roundKey !== latest.current.roundKey || latest.current.paused || data.timestamp <= resetAt.current) return;
           const now = performance.now();
           if (now - data.timestamp > MAX_SAMPLE_AGE_MS) { reset(); return; }
           const next = stabilizer.current.update(data.detection, data.timestamp);
@@ -178,7 +182,14 @@ export default function CameraInput(props: Props) {
           if (data.detection.handCount > 1) setHint('检测到多只手，请只保留一只手入镜。');
           else if (!data.detection.handCount) setHint('未检测到手，请将手完整放入画面。');
           else if (!next) setHint('手势尚不明确，请做出石头、剪刀或布。');
-          else setHint(next.stable ? `已识别为${LABELS[next.move]}，可确认后出拳。` : '请稍微保持手势，正在确认识别结果……');
+          else setHint(latest.current.canSubmit ? '保持同一手势连续 5 秒，将自动锁定并出拳；变化或中断会重新计时。' : '当前仅预览识别结果，等待出拳阶段才会自动提交。');
+          if (latest.current.canSubmit && submittedRound.current !== data.roundKey && canUseSample(next, now)) {
+            // Lock before calling the parent: further frames cannot submit this round twice.
+            submittedRound.current = data.roundKey;
+            reset();
+            setHint(`「${LABELS[next.move]}」已稳定 5 秒，已自动锁定并提交。`);
+            latest.current.onSubmit(next.move);
+          }
         }
       };
       watchdog.current = setTimeout(() => fail('识别模型加载超时，请检查浏览器是否支持 WebAssembly，或关闭后重试。'), 45000);
@@ -187,13 +198,8 @@ export default function CameraInput(props: Props) {
   }
 
   const enabled = status !== 'off' && status !== 'error';
-  const usable = status === 'ready' && !props.paused && props.canSubmit && canUseSample(sample, performance.now());
-  const submit = () => {
-    const current = sampleRef.current;
-    if (!latest.current.canSubmit || latest.current.paused || !canUseSample(current, performance.now())) return;
-    reset();
-    latest.current.onSubmit(current.move);
-  };
+  const counting = status === 'ready' && !props.paused && props.canSubmit && !!sample;
+  const secondsRemaining = Math.ceil(STABLE_DURATION_MS * (1 - (sample?.progress ?? 0)) / 1000);
 
   return <section className={`camera-input ${enabled ? 'camera-enabled' : ''}`} aria-label="摄像头手势识别">
     <div className="camera-heading"><span><Camera size={17}/><b>摄像头出拳</b><small>可选</small></span><button className={enabled ? 'text-button' : 'secondary camera-open'} onClick={enabled ? () => close() : open}>{enabled ? <><CameraOff size={15}/>关闭摄像头</> : <><Camera size={15}/>{status === 'error' ? '重试摄像头' : '开启摄像头'}</>}</button></div>
@@ -207,12 +213,12 @@ export default function CameraInput(props: Props) {
         <span className="camera-result-label">识别到的手势</span>
         <div className={`camera-detected ${sample?.stable ? 'stable' : ''}`} aria-live="polite">{sample ? <><Hand move={sample.move}/><strong>{LABELS[sample.move]}</strong><span>{sample.stable ? <><Check size={14}/>识别稳定</> : '正在确认'}</span></> : <><ScanLine size={38}/><strong>等待手势</strong></>}</div>
         <div className="camera-confidence">{sample ? `识别置信度 ${Math.round(sample.confidence*100)}%` : '保持手部清晰，避免逆光'}</div>
-        <div className="camera-stability" aria-hidden="true"><span style={{ width: `${(sample?.progress ?? 0)*100}%` }}/></div>
-        <button className="primary camera-submit" disabled={!usable} onClick={submit}>使用{sample?.stable ? `「${LABELS[sample.move]}」` : '此手势'}出拳</button>
+        <div className="camera-stability" aria-hidden="true"><span style={{ width: `${counting ? sample.progress*100 : 0}%` }}/></div>
+        <div className={`camera-auto-submit ${counting ? 'counting' : ''}`} role="status">{props.paused ? '识别已暂停，恢复后重新计时' : !props.canSubmit ? '当前不会自动出拳' : counting ? `保持「${LABELS[sample.move]}」${secondsRemaining} 秒后自动出拳` : '手势稳定 5 秒后自动出拳'}</div>
         {!props.canSubmit && <small className="camera-round-hint">{props.phase === 'menu' ? '可先练习识别，开始游戏后再出拳' : props.phase === 'result' ? '点击“下一局”后可再次出拳' : '正在揭晓本局结果'}</small>}
       </div>
     </div>
     <p className={`camera-hint ${status === 'error' ? 'camera-error' : ''}`} role="status">{hint}</p>
-    <p className="camera-privacy"><ShieldCheck size={13}/>画面仅在本机识别，不录制、不上传；识别结果须确认后才出拳。</p>
+    <p className="camera-privacy"><ShieldCheck size={13}/>画面仅在本机识别，不录制、不上传；等待出拳时，手势稳定 5 秒将自动提交。</p>
   </section>;
 }
